@@ -3,6 +3,7 @@
 #include <stdint.h>
 
 #include "terminal.h"
+#include "kstdio.h"
 
 /* Check if the compiler thinks you are targeting the wrong operating system. */
 #if defined(__linux__)
@@ -18,6 +19,7 @@ void kernel_main(void) {
     /* Initialize terminal interface */
     terminal_initialize();
 
-    terminal_writestring("Hello, kernel World!\n");
-    terminal_writestring("Hello, kernel World!\n");
+	kprintf("Hello world!\n");
+	//kprintf("%d+%d=%d\n", 1, 1, 2);
+	//kprintf("Kernel name: %s", "freshos");
 }
