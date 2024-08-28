@@ -49,7 +49,6 @@ $(addprefix $(OBJDIR)/,$(KERNEL_OBJS)) \
 $(LIBS) \
 
 .PHONY: all clean install install-headers install-kernel
-#.SUFFIXES: .o .c .S
 
 all: myos.kernel
 
