@@ -1,5 +1,5 @@
 #include <kernel/tty.h>
-#include <kernel/string.h>
+#include <kernel/strutil.h>
 
 #include "vga.h"
 
@@ -68,6 +68,6 @@ void tty_write(const char* data, size_t size) {
 		tty_putchar(data[i]);
 }
 
-void tty_writestring(const char* data) {
+void tty_writestrutil(const char* data) {
 	tty_write(data, strlen(data));
 }

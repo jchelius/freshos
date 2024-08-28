@@ -1,4 +1,4 @@
-#include <kernel/string.h>
+#include <kernel/strutil.h>
 
 void* memmove(void* dstptr, const void* srcptr, size_t size) {
 	unsigned char* dst = (unsigned char*) dstptr;

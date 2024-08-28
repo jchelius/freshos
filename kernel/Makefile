@@ -7,7 +7,7 @@ CPPFLAGS?=
 LDFLAGS?=
 LIBS?=
 
-BUILD_DIR=build
+OBJDIR=obj
 
 DESTDIR?=
 PREFIX?=/usr/local
@@ -34,18 +34,18 @@ KERNEL_OBJS=\
 $(KERNEL_ARCH_OBJS) \
 kernel/kernel.o \
 kernel/kprintf.o \
-kernel/string/memcmp.o \
-kernel/string/memcpy.o \
-kernel/string/memmove.o \
-kernel/string/memset.o \
-kernel/string/strlen.o
+kernel/strutil/memcmp.o \
+kernel/strutil/memcpy.o \
+kernel/strutil/memmove.o \
+kernel/strutil/memset.o \
+kernel/strutil/strlen.o
 
 OBJS=\
 $(KERNEL_OBJS) \
 
 LINK_LIST=\
 $(LDFLAGS) \
-$(KERNEL_OBJS) \
+$(addprefix $(OBJDIR)/,$(KERNEL_OBJS)) \
 $(LIBS) \
 
 .PHONY: all clean install install-headers install-kernel
@@ -58,15 +58,16 @@ myos.kernel: $(OBJS) $(ARCHDIR)/linker.ld
 	grub-file --is-x86-multiboot myos.kernel
 
 %.o: %.c
-	$(CC) -MD -c $< -o $@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
+	@mkdir -p $(OBJDIR)/$(@D)
+	$(CC) -MD -c $< -o $(OBJDIR)/$@ -std=gnu11 $(CFLAGS) $(CPPFLAGS)
 
 %.o: %.S
-	$(CC) -MD -c $< -o $@ $(CFLAGS) $(CPPFLAGS)
+	@mkdir -p $(OBJDIR)/$(@D)
+	$(CC) -MD -c $< -o $(OBJDIR)/$@ $(CFLAGS) $(CPPFLAGS)
 
 clean:
 	rm -f myos.kernel
-	rm -f $(OBJS) *.o */*.o */*/*.o
-	rm -f $(OBJS:.o=.d) *.d */*.d */*/*.d
+	rm -rf $(OBJDIR)
 
 install: install-headers install-kernel
 

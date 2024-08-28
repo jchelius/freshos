@@ -5,7 +5,7 @@
 #include <stdarg.h>
 
 #include <kernel/tty.h>
-#include <kernel/string.h>
+#include <kernel/strutil.h>
 
 static char *itoa( int value, char * str, int base )
 {
@@ -33,7 +33,7 @@ static char *itoa( int value, char * str, int base )
         *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
         value /= base;
     } while ( value );
-    // Terminating the string.
+    // Terminating the strutil.
     *ptr-- = '\0';
     // Invert the numbers.
     while ( low < ptr )
