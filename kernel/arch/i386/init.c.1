@@ -1,0 +1,9 @@
+#include <kernel/arch/init.h>
+#include "gdt.h"
+
+int arch_init() {
+	// Init the GDT
+	init_gdt();
+
+	return 0;
+}
