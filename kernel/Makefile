@@ -23,7 +23,7 @@ LIBS:=$(LIBS) -nostdlib -lgcc
 
 ARCHDIR=arch/$(HOSTARCH)
 
-include $(ARCHDIR)/make.config
+#include $(ARCHDIR)/make.config
 
 CFLAGS:=$(CFLAGS) $(KERNEL_ARCH_CFLAGS)
 CPPFLAGS:=$(CPPFLAGS) $(KERNEL_ARCH_CPPFLAGS)
@@ -31,14 +31,19 @@ LDFLAGS:=$(LDFLAGS) $(KERNEL_ARCH_LDFLAGS)
 LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
 
 KERNEL_OBJS=\
-$(KERNEL_ARCH_OBJS) \
 kernel/kernel.o \
 kernel/kprintf.o \
 kernel/strutil/memcmp.o \
 kernel/strutil/memcpy.o \
 kernel/strutil/memmove.o \
 kernel/strutil/memset.o \
-kernel/strutil/strlen.o
+kernel/strutil/strlen.o \
+kernel/boot.o \
+kernel/tty.o \
+kernel/gdt.o \
+kernel/gdt_asm.o
+
+LD_FILE=kernel/linker.ld
 
 OBJS=\
 $(KERNEL_OBJS) \
@@ -52,8 +57,8 @@ $(LIBS) \
 
 all: myos.kernel
 
-myos.kernel: $(OBJS) $(ARCHDIR)/linker.ld
-	$(CC) -T $(ARCHDIR)/linker.ld -o $@ $(CFLAGS) $(LINK_LIST)
+myos.kernel: $(OBJS) $(LD_FILE)
+	$(CC) -T $(LD_FILE) -o $@ $(CFLAGS) $(LINK_LIST)
 	grub-file --is-x86-multiboot myos.kernel
 
 %.o: %.c
