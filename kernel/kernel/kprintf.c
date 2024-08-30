@@ -7,28 +7,24 @@
 #include <kernel/tty.h>
 #include <kernel/strutil.h>
 
-static char *itoa( int value, char * str, int base )
-{
+static char *itoa( int value, char * str, int base ) {
     char *rc;
     char *ptr;
     char *low;
     // Check for supported base.
-    if ( base < 2 || base > 36 )
-    {
+    if ( base < 2 || base > 36 ) {
         *str = '\0';
         return str;
     }
     rc = ptr = str;
     // Set '-' for negative decimals.
-    if ( value < 0 && base == 10 )
-    {
+    if ( value < 0 && base == 10 ) {
         *ptr++ = '-';
     }
     // Remember where the numbers start.
     low = ptr;
     // The actual conversion.
-    do
-    {
+    do {
         // Modulo is negative for negative value. This trick makes abs() unnecessary.
         *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
         value /= base;
@@ -36,8 +32,7 @@ static char *itoa( int value, char * str, int base )
     // Terminating the strutil.
     *ptr-- = '\0';
     // Invert the numbers.
-    while ( low < ptr )
-    {
+    while ( low < ptr ) {
         char tmp = *low;
         *low++ = *ptr;
         *ptr-- = tmp;

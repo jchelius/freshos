@@ -68,7 +68,7 @@ void init_gdt() {
     gdt_table.limit = sizeof(uint64_t) * 5 - 1;
     gdt_table.base = (uint32_t)&gdt_entries;
     
-    // Call assembly routine to flush the GDT
+    // Call assembly routine to load the GDT
     load_gdt(gdt_table.limit, gdt_table.base);
 
     // Call assembly routine to flush the GDT
