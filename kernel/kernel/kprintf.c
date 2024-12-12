@@ -6,29 +6,26 @@
 
 #include <kernel/tty.h>
 #include <kernel/strutil.h>
+#include <kernel/vga.h>
 
-static char *itoa( int value, char * str, int base )
-{
+static char *itoa(int value, char *str, int base) {
     char *rc;
     char *ptr;
     char *low;
     // Check for supported base.
-    if ( base < 2 || base > 36 )
-    {
+    if (base < 2 || base > 36) {
         *str = '\0';
         return str;
     }
     rc = ptr = str;
     // Set '-' for negative decimals.
-    if ( value < 0 && base == 10 )
-    {
+    if (value < 0 && base == 10) {
         *ptr++ = '-';
     }
     // Remember where the numbers start.
     low = ptr;
     // The actual conversion.
-    do
-    {
+    do {
         // Modulo is negative for negative value. This trick makes abs() unnecessary.
         *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
         value /= base;
@@ -36,8 +33,7 @@ static char *itoa( int value, char * str, int base )
     // Terminating the strutil.
     *ptr-- = '\0';
     // Invert the numbers.
-    while ( low < ptr )
-    {
+    while (low < ptr) {
         char tmp = *low;
         *low++ = *ptr;
         *ptr-- = tmp;
@@ -45,18 +41,22 @@ static char *itoa( int value, char * str, int base )
     return rc;
 }
 
-static bool print(const char* data, size_t length) {
+static bool print(const char *data, size_t length, uint8_t color) {
 	for (size_t i = 0; i < length; i++) {
 		if (data[i] == '\n') {
 			tty_nextline();
 			return true;
 		}
-		tty_write(&data[i], sizeof(data[i]));
+		tty_write_color(&data[i], sizeof(data[i]), color);
 	}
 	return true;
 }
 
-int kprintf(const char* restrict format, ...) {
+int kprintf(const char *restrict format, ...) {
+	return kprintf_color(tty_getcolor(), format);
+}
+
+int kprintf_color(uint8_t color, const char *restrict format, ...) {
 	va_list parameters;
 	va_start(parameters, format);
 
@@ -66,17 +66,20 @@ int kprintf(const char* restrict format, ...) {
 		size_t maxrem = INT_MAX - written;
 
 		if (format[0] != '%' || format[1] == '%') {
-			if (format[0] == '%')
+			if (format[0] == '%') {
 				format++;
+			}
 			size_t amount = 1;
-			while (format[amount] && format[amount] != '%')
+			while (format[amount] && format[amount] != '%') {
 				amount++;
+			}
 			if (maxrem < amount) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(format, amount))
+			if (!print(format, amount, color)) {
 				return -1;
+			}
 			format += amount;
 			written += amount;
 			continue;
@@ -91,8 +94,9 @@ int kprintf(const char* restrict format, ...) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(&c, sizeof(c)))
+			if (!print(&c, sizeof(c), color)) {
 				return -1;
+			}
 			written++;
 		} else if (*format == 's') {
 			format++;
@@ -102,8 +106,9 @@ int kprintf(const char* restrict format, ...) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(str, len))
+			if (!print(str, len, color)) {
 				return -1;
+			}
 			written += len;
 		} else if (*format == 'd') {
 			format++;
@@ -113,8 +118,9 @@ int kprintf(const char* restrict format, ...) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(str, len))
+			if (!print(str, len, color)) {
 				return -1;
+			}
 			written += len;
 		} else {
 			format = format_begun_at;
@@ -123,8 +129,9 @@ int kprintf(const char* restrict format, ...) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(format, len))
+			if (!print(format, len, color)) {
 				return -1;
+			}
 			written += len;
 			format += len;
 		}

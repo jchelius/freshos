@@ -1,7 +1,6 @@
 DEFAULT_HOST!=../default-host.sh
 HOST?=DEFAULT_HOST
 HOSTARCH!=../target-triplet-to-arch.sh $(HOST)
-
 CFLAGS?=-O2 -g
 CPPFLAGS?=
 LDFLAGS?=
@@ -33,6 +32,7 @@ LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
 KERNEL_OBJS=\
 kernel/kernel.o \
 kernel/kprintf.o \
+kernel/kerror.o \
 kernel/strutil/memcmp.o \
 kernel/strutil/memcpy.o \
 kernel/strutil/memmove.o \
@@ -41,7 +41,7 @@ kernel/strutil/strlen.o \
 kernel/boot.o \
 kernel/tty.o \
 kernel/gdt.o \
-kernel/gdt_asm.o
+kernel/gdt_asm.o \
 
 LD_FILE=kernel/linker.ld
 

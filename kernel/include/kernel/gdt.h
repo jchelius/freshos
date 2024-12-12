@@ -43,22 +43,7 @@
 						SEG_LONG(0)  | SEG_SIZE(1) | SEG_GRAN(1) | \
 						SEG_PRIV(3)  | SEG_DATA_RDWR
 
-// Define a GDT entry 
-/* typedef struct {
-	uint16_t limit_low;
-	uint16_t base_low;
-	uint8_t base_middle;
-	uint8_t access;
-	uint8_t granularity;
-	uint8_t base_high;
-} __attribute__((packed)) gdt_entry_t; */
-
 // Define a GDT table
-typedef struct {
-	uint16_t limit;
-	uint32_t base;
-} __attribute((packed)) gdt_table_t;
-
 void init_gdt(void);
 uint64_t create_descriptor(uint32_t base, uint32_t limit, uint16_t flag);
 void load_gdt(uint16_t limit, uint32_t base);

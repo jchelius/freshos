@@ -1,6 +1,6 @@
 .section .data
 gdtr: .short 0 /* For limit storage */
-	  .long 0 /* For base storage */
+      .long 0 /* For base storage */
 
 .section .text
 /* Assembly routine to load the GDT */
