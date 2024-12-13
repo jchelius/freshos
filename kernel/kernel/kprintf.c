@@ -7,6 +7,7 @@
 #include <kernel/tty.h>
 #include <kernel/strutil.h>
 #include <kernel/vga.h>
+#include <kernel/kerror.h>
 
 static char *itoa(int value, char *str, int base) {
     char *rc;
@@ -29,7 +30,7 @@ static char *itoa(int value, char *str, int base) {
         // Modulo is negative for negative value. This trick makes abs() unnecessary.
         *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
         value /= base;
-    } while ( value );
+    } while (value);
     // Terminating the strutil.
     *ptr-- = '\0';
     // Invert the numbers.
@@ -41,25 +42,35 @@ static char *itoa(int value, char *str, int base) {
     return rc;
 }
 
-static bool print(const char *data, size_t length, uint8_t color) {
-	for (size_t i = 0; i < length; i++) {
-		if (data[i] == '\n') {
-			tty_nextline();
-			return true;
+static bool handle_special_ch(char c) {
+	if (c == '\n') {
+		tty_nextline();
+		return true;
+	} else if (c == '\r') {
+		tty_carriagereturn();
+		return true;
+	}
+	return false;
+}
+
+static bool print(const char *data, size_t length) {
+	for (size_t i = 0; i < length; ) {
+		size_t pos = i;
+		while (pos < length && data[pos] != '\n' && data[pos] != '\r') {
+			pos++;
 		}
-		tty_write_color(&data[i], sizeof(data[i]), color);
+		if (pos == i) {
+			handle_special_ch(data[pos]);
+			i++;
+			continue;
+		}
+		tty_write(&data[i], pos - i);
+		i = pos;
 	}
 	return true;
 }
 
-int kprintf(const char *restrict format, ...) {
-	return kprintf_color(tty_getcolor(), format);
-}
-
-int kprintf_color(uint8_t color, const char *restrict format, ...) {
-	va_list parameters;
-	va_start(parameters, format);
-
+static int kprintf_internal(const char *format, va_list parameters) {
 	int written = 0;
 
 	while (*format != '\0') {
@@ -77,7 +88,7 @@ int kprintf_color(uint8_t color, const char *restrict format, ...) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(format, amount, color)) {
+			if (!print(format, amount)) {
 				return -1;
 			}
 			format += amount;
@@ -94,8 +105,8 @@ int kprintf_color(uint8_t color, const char *restrict format, ...) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(&c, sizeof(c), color)) {
-				return -1;
+			if (!handle_special_ch(c)) {
+				tty_putchar(c);
 			}
 			written++;
 		} else if (*format == 's') {
@@ -106,19 +117,20 @@ int kprintf_color(uint8_t color, const char *restrict format, ...) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(str, len, color)) {
+			if (!print(str, len)) {
 				return -1;
 			}
 			written += len;
 		} else if (*format == 'd') {
 			format++;
-			const char *str = itoa(va_arg(parameters, int), NULL, 10);
+			char buf[12];
+			const char *str = itoa(va_arg(parameters, int), buf, 10);
 			size_t len = strlen(str);
 			if (maxrem < len) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(str, len, color)) {
+			if (!print(str, len)) {
 				return -1;
 			}
 			written += len;
@@ -129,7 +141,7 @@ int kprintf_color(uint8_t color, const char *restrict format, ...) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(format, len, color)) {
+			if (!print(format, len)) {
 				return -1;
 			}
 			written += len;
@@ -138,5 +150,28 @@ int kprintf_color(uint8_t color, const char *restrict format, ...) {
 	}
 
 	va_end(parameters);
+	if (written > 0) {
+		tty_move_cursor();
+	}
 	return written;
+}
+
+int kprintf(const char *format, ...) {
+	va_list parameters;
+	va_start(parameters, format);
+	int res = kprintf_internal(format, parameters);
+	va_end(parameters);
+	return res;
+}
+
+/* defined in kerror.h header file */
+int kerror(const char *format, ...) {
+	va_list parameters;
+	va_start(parameters, format);
+	const uint8_t prev_color = tty_getfgcolor();
+	tty_setfgcolor(VGA_COLOR_RED);
+	int res = kprintf_internal(format, parameters);
+	tty_setfgcolor(prev_color);
+	va_end(parameters);
+	return res;
 }

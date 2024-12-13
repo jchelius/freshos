@@ -2,14 +2,21 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
-void tty_initialize(void);
-void tty_putchar_color(char c, uint8_t color);
-void tty_putchar(char c);
-void tty_write_color(const char *data, size_t size, uint8_t color);
-void tty_write(const char *data, size_t size);
-void tty_writestring_color(const char *data, uint8_t color);
-void tty_writestring(const char *data);
-uint8_t tty_getcolor();
-void tty_scroll();
+void tty_initialize();
+
+void tty_move_cursor();
+void tty_clear();
+
+void tty_scroll(uint8_t num_lines);
 void tty_nextline();
+void tty_carriagereturn();
+
+void tty_putchar(char c);
+void tty_write(const char *data, size_t size);
+void tty_writestring(const char *data);
+
+uint8_t tty_getfgcolor();
+uint8_t tty_getbgcolor();
+void tty_setfgcolor(uint8_t fg);

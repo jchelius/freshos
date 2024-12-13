@@ -41,7 +41,7 @@ void init_gdt() {
 	gdt_entries[4] = create_descriptor(0, 0x000fffff, (GDT_DATA_PL3));
 	
 	// Clear interrupts
-	asm("cli");
+	__asm__("cli");
 
 	// Set up the GDT table values
 	const uint16_t limit = sizeof(uint64_t) * 5 - 1;
