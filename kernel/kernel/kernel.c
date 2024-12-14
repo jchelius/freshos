@@ -1,12 +1,13 @@
 #include <kernel/tty.h>
 #include <kernel/kprintf.h>
 #include <kernel/gdt.h>
-#include <kernel/vga.h>
+#include <kernel/idt.h>
 
 void kernel_main(void) {
 	tty_initialize();
 	kprintf("Hello, kernel World!\n");
-	init_gdt();
+	gdt_init();
+	idt_init();
 	/* Terminal scrolling test */
 	// char test_buf[26] = "Hello, kernel World! %d \n";
 	// for (int i = 0; i < 32; i++) {
