@@ -1,13 +1,11 @@
-#include <kernel/kprintf.h>
+#include <kernel/kstdio.h>
 
 #include <limits.h>
-#include <stdbool.h>
 #include <stdarg.h>
 
 #include <kernel/tty.h>
 #include <kernel/strutil.h>
 #include <kernel/vga.h>
-#include <kernel/kerror.h>
 
 static char *itoa(int value, char *str, int base) {
     char *rc;
@@ -42,18 +40,18 @@ static char *itoa(int value, char *str, int base) {
     return rc;
 }
 
-static bool handle_special_ch(char c) {
+static int handle_special_ch(char c) {
 	if (c == '\n') {
 		tty_nextline();
-		return true;
+		return 1;
 	} else if (c == '\r') {
 		tty_carriagereturn();
-		return true;
+		return 1;
 	}
-	return false;
+	return -1;
 }
 
-static bool print(const char *data, size_t length) {
+int print(const char *restrict data, size_t length) {
 	for (size_t i = 0; i < length; ) {
 		size_t pos = i;
 		while (pos < length && data[pos] != '\n' && data[pos] != '\r') {
@@ -67,10 +65,10 @@ static bool print(const char *data, size_t length) {
 		tty_write(&data[i], pos - i);
 		i = pos;
 	}
-	return true;
+	return 1;
 }
 
-static int kprintf_internal(const char *format, va_list parameters) {
+int kprintf_internal(const char *restrict format, va_list parameters) {
 	int written = 0;
 
 	while (*format != '\0') {
@@ -165,13 +163,3 @@ int kprintf(const char *format, ...) {
 }
 
 /* defined in kerror.h header file */
-int kerror(const char *format, ...) {
-	va_list parameters;
-	va_start(parameters, format);
-	const uint8_t prev_color = tty_getfgcolor();
-	tty_setfgcolor(VGA_COLOR_RED);
-	int res = kprintf_internal(format, parameters);
-	tty_setfgcolor(prev_color);
-	va_end(parameters);
-	return res;
-}

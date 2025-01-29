@@ -1,7 +1,19 @@
 #include <kernel/idt.h>
 #include <stdint.h>
 #include <kernel/strutil.h>
-#include <kernel/kprintf.h>
+#include <kernel/kstdio.h>
+#include <kernel/gdt.h>
+#include <system.h>
+
+#define NUM_ISRS 256
+
+#define IDT_GATE_TYPE_INTERRUPT_32 0xe
+#define IDT_GATE_TYPE_TRAP_32 0xf
+#define IDT_GATE_DPL(x)   ((x) << 5) // CPU Privilege level allowed to call interrupt using INT 
+#define IDT_GATE_PRESENT 0x8 << 4
+
+#define IDT_INTERRUPT_KERNEL_32 IDT_GATE_PRESENT | IDT_GATE_DPL(0) | IDT_GATE_TYPE_INTERRUPT_32
+#define IDT_TRAP_KERNEL_32 IDT_GATE_PRESENT | IDT_GATE_DPL(0) | IDT_GATE_TYPE_TRAP_32
 
 // Define a IDT table
 struct {
@@ -10,9 +22,45 @@ struct {
 } __attribute((packed)) idt_table;
 
 // IDT entries
-uint64_t idt_entries[256];
+uint64_t idt_entries[NUM_ISRS];
+extern uint32_t isrs[NUM_ISRS];
 
-extern void idt_load();
+extern void idt_flush();
+
+char *exception_msgs[] = {
+	"Division Error",
+	"Debug",
+	"Non-maskable Interrupt",
+	"Breakpoint",
+	"Overflow",
+	"Bound Range Exceeded",
+	"Invalid Opcode",
+	"Device Not Available",
+	"Double Fault",
+	"Coprocessor Segment Overrun",
+	"Invalid TSS",
+	"Segment Not Present",
+	"Stack-Segment Fault",
+	"General Protection Fault",
+	"Page Fault",
+	"Reserved",
+	"x87 Floating-point Exception",
+	"Alignment Check",
+	"Machine Check",
+	"SIMD Floating-point Exception",
+	"Virtualization Exception",
+	"Control Protection Exception",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Reserved",
+	"Hypervisor Injection Exception",
+	"VMM Communication Exception",
+	"Security Exception",
+	"Reserved",
+};
 
 static void idt_descriptor_set(uint8_t index, uint32_t offset, uint16_t segment, uint8_t flag) {
 	uint64_t *descriptor = &idt_entries[index];
@@ -27,15 +75,33 @@ static void idt_descriptor_set(uint8_t index, uint32_t offset, uint16_t segment,
 	*descriptor |= (uint32_t)(segment) << 16;
 
 	// Set the upper 16 bits of the offset
-	*descriptor |= (uint64_t)(offset >> 16) << 32;
+	*descriptor |= (uint64_t)(offset >> 16) << 48;
 }
 
 void idt_init() {
-	idt_table.limit = sizeof(uint64_t) * 256 - 1;
+	idt_table.limit = sizeof(uint64_t) * NUM_ISRS - 1;
 	idt_table.base = (uint32_t)&idt_entries;
 
+	// clear IDT
 	memset(&idt_entries, 0, sizeof(uint64_t) * 256);
+	for (uint8_t i = 0; i < 32; i++) {
+		uint8_t flag = (i != 2) ? IDT_TRAP_KERNEL_32 : IDT_INTERRUPT_KERNEL_32;
+		idt_descriptor_set(i, isrs[i], SEG_KERNEL_CODE, flag);
+	}
+	for (uint8_t i = 32; i < 48; i++) {
+		idt_descriptor_set(i, isrs[i], SEG_KERNEL_CODE, IDT_INTERRUPT_KERNEL_32);
+	}
 
-	idt_load();
+	idt_flush();
 	kprintf("IDT successfully loaded!\n");
+}
+
+void isr_handler(struct regs *r) {
+	if (r->int_no < 32) {
+		/* Display the description for the exception that occurred.
+		*  For now, simply halt the system using an infinite loop. */
+		kputs(exception_msgs[r->int_no]);
+		kputs("Exception. System halted");
+		for (;;);
+	}
 }

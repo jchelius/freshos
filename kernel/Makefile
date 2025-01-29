@@ -31,7 +31,9 @@ LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
 
 KERNEL_OBJS=\
 kernel/kernel.o \
-kernel/kprintf.o \
+kernel/kstdio/kprintf.o \
+kernel/kstdio/kerror.o \
+kernel/kstdio/kputs.o \
 kernel/strutil/memcmp.o \
 kernel/strutil/memcpy.o \
 kernel/strutil/memmove.o \
@@ -43,7 +45,7 @@ kernel/gdt.o \
 kernel/gdt_asm.o \
 kernel/idt.o \
 kernel/idt_asm.o \
-kernel/divzero.o \
+kernel/isr.o \
 
 LD_FILE=kernel/linker.ld
 

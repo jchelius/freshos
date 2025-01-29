@@ -7,7 +7,7 @@
 gdt_flush:
 	lgdt gdt_table
 	/* Reload CS register containing code selector: */
-	jmp $0x08,$complete_flush
+	jmp $0x08, $complete_flush
 complete_flush:
 	/* Reload data segment registers: */
 	mov $0x10, %ax

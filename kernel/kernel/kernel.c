@@ -1,13 +1,21 @@
 #include <kernel/tty.h>
-#include <kernel/kprintf.h>
+#include <kernel/kstdio.h>
 #include <kernel/gdt.h>
 #include <kernel/idt.h>
+
+volatile int d = 0;
 
 void kernel_main(void) {
 	tty_initialize();
 	kprintf("Hello, kernel World!\n");
 	gdt_init();
 	idt_init();
+
+	/* Interrupt test: Divide by zero
+	 * this should cause an exception */
+	int x = 10 / d;
+	kprintf("the result is %d\n", x);
+
 	/* Terminal scrolling test */
 	// char test_buf[26] = "Hello, kernel World! %d \n";
 	// for (int i = 0; i < 32; i++) {

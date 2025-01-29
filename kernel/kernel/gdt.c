@@ -1,6 +1,5 @@
 #include <kernel/gdt.h>
-#include <kernel/kprintf.h>
-#include <kernel/kerror.h>
+#include <kernel/kstdio.h>
 #include <stdint.h>
 
 // Refer to the Intel documentation for a description of what each one does.
@@ -44,6 +43,11 @@
 #define GDT_DATA_PL3 SEG_DESCTYPE(1) | SEG_PRES(1) | SEG_SAVL(0) | \
 						SEG_LONG(0)  | SEG_SIZE(1) | SEG_GRAN(1) | \
 						SEG_PRIV(3)  | SEG_DATA_RDWR
+
+#define SEG_KERNEL_CODE 0x08
+#define SEG_KERNEL_DATA 0x16
+#define SEG_USER_CODE 0x24
+#define SEG_USER_DATA 0x32
 
 // Define a GDT table
 struct {
