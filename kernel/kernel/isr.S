@@ -1019,6 +1019,22 @@ isr255:
 	pushw $255
 	jmp isr_common
 
+isr_common:
+	pusha
+	pushw %ds
+	pushw %es
+	pushw %fs
+	pushw %gs
+	pushl %esp
+	cld
+	call isr_handler
+	popl %eax
+	popw %gs
+	popw %fs
+	popw %es
+	popw %ds
+	addl %esp, 8
+	iret
 .data
 .global isrs
 isrs:
@@ -1278,20 +1294,3 @@ isrs:
 	.long isr253
 	.long isr254
 	.long isr255
-
-isr_common:
-	pusha
-	pushw %ds
-	pushw %es
-	pushw %fs
-	pushw %gs
-	pushl %esp
-	cld
-	call isr_handler
-	popl %eax
-	popw %gs
-	popw %fs
-	popw %es
-	popw %ds
-	addl %esp, 8
-	iret

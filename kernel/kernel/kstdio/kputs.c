@@ -9,5 +9,6 @@ int kputs(const char *restrict str) {
 	size_t len = strlen(str);
 	int ret = print(str, len);
 	tty_nextline();
+	tty_move_cursor();
 	return ret;
 }
