@@ -84,11 +84,21 @@ void idt_init() {
 
 	// clear IDT
 	memset(&idt_entries, 0, sizeof(uint64_t) * 256);
-	for (uint8_t i = 0; i < 32; i++) {
-		uint8_t flag = (i != 2) ? IDT_TRAP_KERNEL_32 : IDT_INTERRUPT_KERNEL_32;
-		idt_descriptor_set(i, isrs[i], SEG_KERNEL_CODE, flag);
-	}
-	for (uint8_t i = 32; i < 48; i++) {
+
+	/* 0: Divide by zero: interrupt */
+	idt_descriptor_set(0, isrs[0], SEG_KERNEL_CODE, IDT_INTERRUPT_KERNEL_32);
+	/* 1: Debug Exception: trap */
+	idt_descriptor_set(1, isrs[1], SEG_KERNEL_CODE, IDT_TRAP_KERNEL_32);
+	/* 2: NMI: interrupt */
+	idt_descriptor_set(2, isrs[2], SEG_KERNEL_CODE, IDT_INTERRUPT_KERNEL_32);
+	/* 3: Breakpoint Exception (BP): trap */
+	idt_descriptor_set(3, isrs[3], SEG_KERNEL_CODE, IDT_TRAP_KERNEL_32);
+	/* 4: Overflow Exception (OF): trap */
+	idt_descriptor_set(4, isrs[4], SEG_KERNEL_CODE, IDT_TRAP_KERNEL_32);
+	/* 5: BOUND Range Exceeded (BR): trap */
+	idt_descriptor_set(5, isrs[5], SEG_KERNEL_CODE, IDT_TRAP_KERNEL_32);
+	/* 6-48: interrupt */
+	for (uint8_t i = 6; i < 48; i++) {
 		idt_descriptor_set(i, isrs[i], SEG_KERNEL_CODE, IDT_INTERRUPT_KERNEL_32);
 	}
 
