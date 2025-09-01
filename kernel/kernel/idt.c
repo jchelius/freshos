@@ -3,7 +3,8 @@
 #include <kernel/strutil.h>
 #include <kernel/kstdio.h>
 #include <kernel/gdt.h>
-#include <system.h>
+#include <kernel/pic.h>
+#include "system.h"
 
 #define NUM_ISRS 256
 
@@ -26,6 +27,13 @@ uint64_t idt_entries[NUM_ISRS];
 extern uint32_t isrs[NUM_ISRS];
 
 extern void idt_flush();
+
+struct regs {
+    uint16_t gs, fs, es, ds;
+    uint32_t edi, esi, ebp, esp, ebx, edx, ecx, eax;
+    uint32_t int_no, err_code;
+    uint32_t eip, cs, eflags, useresp, ss;
+} __attribute__((packed));
 
 char *exception_msgs[] = {
 	"Division Error",
@@ -80,7 +88,7 @@ static void idt_descriptor_set(uint8_t index, uint32_t offset, uint16_t segment,
 
 void idt_init() {
 	idt_table.limit = sizeof(uint64_t) * NUM_ISRS - 1;
-	idt_table.base = (uint32_t)&idt_entries;
+	idt_table.base = (uint32_t) &idt_entries;
 
 	// clear IDT
 	memset(&idt_entries, 0, sizeof(uint64_t) * 256);
@@ -103,6 +111,10 @@ void idt_init() {
 	}
 
 	idt_flush();
+
+	/* Remap PIC to ISRs 32-47 */
+	pic_remap(0x20, 0x28);
+
 	kprintf("IDT successfully loaded!\n");
 }
 
@@ -113,5 +125,25 @@ void isr_handler(struct regs *r) {
 		kputs(exception_msgs[r->int_no]);
 		kputs("Exception. System halted");
 		for (;;);
+	} else if (r->int_no >= 32 && r->int_no < 48) {
+		int pic_no = r->int_no - 32;
+		/* Handle PIC interrupt */
+		// kputs("PIC interrupt\n");
+
+		/* Check the ISR register. If this is not set, then a spurious
+		* interrupt has occurred. */
+		if ((pic_no == 7 || pic_no == 15) && !(pic_get_isr() & (1 << pic_no))) {
+			/* spurious interrupt has occured */
+			return;
+		}
+
+		if (pic_no == 1) {
+			uint8_t scancode = inportb(0x60);
+			kprintf("Key: scancode = %d\n", scancode);
+		}
+
+		// kputs("No spurious interrupt\n");
+		pic_send_eoi((uint8_t) pic_no);
 	}
 }
+

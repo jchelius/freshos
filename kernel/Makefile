@@ -46,6 +46,7 @@ kernel/gdt_asm.o \
 kernel/idt.o \
 kernel/idt_asm.o \
 kernel/isr.o \
+kernel/pic.o \
 
 LD_FILE=kernel/linker.ld
 

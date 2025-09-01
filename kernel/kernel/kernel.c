@@ -3,7 +3,7 @@
 #include <kernel/gdt.h>
 #include <kernel/idt.h>
 
-volatile int d = 0;
+// volatile int d = 0;
 
 void kernel_main(void) {
 	tty_initialize();
@@ -11,10 +11,14 @@ void kernel_main(void) {
 	gdt_init();
 	idt_init();
 
+	while (1) {
+		__asm__ volatile("hlt");
+	}
+
 	/* Interrupt test: Divide by zero
 	 * this should cause an exception */
-	int x = 10 / d;
-	kprintf("the result is %d\n", x);
+	// int x = 10 / d;
+	// kprintf("the result is %d\n", x);
 
 	/* Terminal scrolling test */
 	// char test_buf[26] = "Hello, kernel World! %d \n";
