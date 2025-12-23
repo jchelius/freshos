@@ -2,12 +2,19 @@
 #include <kernel/kstdio.h>
 #include <kernel/gdt.h>
 #include <kernel/idt.h>
+#include <kernel/multiboot.h>
 
 // volatile int d = 0;
 
-void kernel_main(void) {
+void kernel_main(uint32_t mb_magic, uint32_t mb_addr) {
+	if (mb_magic != MULTIBOOT_BOOTLOADER_MAGIC) {
+		kerror("No Multiboot Magic found.\n");
+		// TODO: panic
+	}
+	
 	tty_initialize();
 	kprintf("Hello, kernel World!\n");
+	kprintf("sizeof(multiboot_info)=%d\n", sizeof(struct multiboot_info));
 	gdt_init();
 	idt_init();
 
