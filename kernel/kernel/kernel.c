@@ -15,6 +15,7 @@ void kernel_main(uint32_t mb_magic, uint32_t mb_addr) {
 	tty_initialize();
 	kprintf("Hello, kernel World!\n");
 	kprintf("sizeof(multiboot_info)=%d\n", sizeof(struct multiboot_info));
+	struct multiboot_info *mb_info = (struct multiboot_info *) mb_addr;
 	gdt_init();
 	idt_init();
 

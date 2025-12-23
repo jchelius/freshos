@@ -1,8 +1,10 @@
 #pragma once
+#include <stdint.h>
 
 #define MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002
 
-struct __attribute__((packed)) multiboot_info {
+// No packing required: Multiboot layout matches natural C alignment
+struct multiboot_info {
 	/* flags */
 	uint32_t flags;                   // 0-3
 
@@ -21,10 +23,21 @@ struct __attribute__((packed)) multiboot_info {
 	uint32_t mods_addr;               // 24-27
 
 	/* syms */
-	uint64_t syms1;                   // 28-35
-	uint32_t syms2;                   // 36-39
+	union {
+	    struct {
+		uint32_t tabsize;
+		uint32_t strsize;
+		uint32_t addr;
+		uint32_t reserved;
+	    } aout_sym;
 
-	uint32_t unused;                  // 40-43
+	    struct {
+		uint32_t num;
+		uint32_t size;
+		uint32_t addr;
+		uint32_t shndx;
+	    } elf_sec;
+	} syms;                           // 28-43
 
 	/* mmap */
 	uint32_t mmap_length;             // 44-47
@@ -58,7 +71,6 @@ struct __attribute__((packed)) multiboot_info {
 	uint32_t framebuffer_height;      // 104-107
 	uint8_t framebuffer_bpp;          // 108-108
 	uint8_t framebuffer_type;         // 109-109
-	uint32_t color_info1;             // 110-113
-	uint8_t color_info2;              // 114-114
+	uint8_t color_info2[6];           // 110-115
 };
 
