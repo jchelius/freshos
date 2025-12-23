@@ -24,19 +24,19 @@ struct multiboot_info {
 
 	/* syms */
 	union {
-	    struct {
-		uint32_t tabsize;
-		uint32_t strsize;
-		uint32_t addr;
-		uint32_t reserved;
-	    } aout_sym;
+		struct {
+			uint32_t tabsize;
+			uint32_t strsize;
+			uint32_t addr;
+			uint32_t reserved;
+		} aout_sym;
 
-	    struct {
-		uint32_t num;
-		uint32_t size;
-		uint32_t addr;
-		uint32_t shndx;
-	    } elf_sec;
+		struct {
+			uint32_t num;
+			uint32_t size;
+			uint32_t addr;
+			uint32_t shndx;
+		} elf_sec;
 	} syms;                           // 28-43
 
 	/* mmap */
