@@ -74,3 +74,10 @@ struct multiboot_info {
 	uint8_t color_info2[6];           // 110-115
 };
 
+// struct __attribute__((packed)) multiboot_mmem_info {
+struct multiboot_mmap_entry {
+	uint32_t size; // -4 -3 -2 -1; 0 1 2 3
+	uint64_t base_addr; // 0 1 2 3 4 5 6 7; 4 5 6 7 8 9 10 11
+	uint64_t length; // 8 9 10 11 12 13 14 15; 12 13 14 15 16 17 18 19
+	uint32_t type; // 16; 20
+};
