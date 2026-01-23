@@ -40,6 +40,45 @@ static char *itoa(int value, char *str, int base) {
     return rc;
 }
 
+static inline int is_whitespace(char ch) {
+	return ch == ' ' || 
+		ch == '\t' || 
+		ch == '\n' ||
+		ch == '\v' ||
+		ch == '\f' ||
+		ch == '\r';
+}
+
+static inline int is_digit(char ch) {
+	return ch >= '0' && ch <= '9';
+}
+
+static int atoi(const char *str) {
+	int res = 0;
+	while (is_whitespace(*str)) {
+		str++;
+	}
+	const char *start = str;
+	size_t len = 0;
+	while (is_digit(*(str++))) {
+		len++;
+	}
+
+	if (len > 12) {
+		return -1;
+	}
+
+	while (len--) {
+		int dig = *(start++) - '0';
+		for (size_t i = 0; i < len; i++) {
+			dig *= 10;
+		}
+		res += dig;
+	}
+
+	return res;
+}
+
 static int handle_special_ch(char c) {
 	if (c == '\n') {
 		tty_nextline();
@@ -53,21 +92,25 @@ static int handle_special_ch(char c) {
 
 int print(const char *restrict data, size_t length) {
 	for (size_t i = 0; i < length; ) {
-		size_t pos = i;
-		while (pos < length && data[pos] != '\n' && data[pos] != '\r') {
-			pos++;
-		}
-		if (pos == i) {
-			handle_special_ch(data[pos]);
+		size_t start = i;
+
+		// Advance to next special character or end
+		while (i < length && data[i] != '\n' && data[i] != '\r') {
 			i++;
-			continue;
 		}
-		tty_write(&data[i], pos - i);
-		i = pos;
+		if (i > start) {
+			tty_write(&data[start], i - start);
+		}
+		if (i < length) {
+			// Must be a special character
+			handle_special_ch(data[i]);
+			i++;
+		}
 	}
 	return 1;
 }
 
+/* TODO: this function is UNSAFE since it relies on \0 to determine the end of the string */
 int kprintf_internal(const char *restrict format, va_list parameters) {
 	int written = 0;
 
@@ -94,11 +137,24 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 			continue;
 		}
 
-		const char* format_begun_at = format++;
+		// At this point, format[0] == '%' AND format[1] != '%'
+		// It's possible that format[1] == '\0'
+
+		const char *format_begun_at = format++;
+
+		int left_justify = 0;
+
+		if (*format == '-') {
+			// left justified
+			format++;
+			left_justify = 1;
+		}
+
+		size_t padding = atoi(format);
 
 		if (*format == 'c') {
 			format++;
-			char c = (char) va_arg(parameters, int /* char promotes to int */);
+			char c = (unsigned char) va_arg(parameters, int /* char promotes to int */);
 			if (!maxrem) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
@@ -115,8 +171,18 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
+			if (!left_justify && len < padding) {
+				for (size_t i = 0; i < padding - len; i++) {
+					tty_putchar(' ');
+				}
+			}
 			if (!print(str, len)) {
 				return -1;
+			}
+			if (left_justify && len < padding) {
+				for (size_t i = 0; i < padding - len; i++) {
+					tty_putchar(' ');
+				}
 			}
 			written += len;
 		} else if (*format == 'd') {
@@ -154,6 +220,7 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 	return written;
 }
 
+/* TODO: this function is UNSAFE since it relies on \0 to determine the end of the string */
 int kprintf(const char *format, ...) {
 	va_list parameters;
 	va_start(parameters, format);
