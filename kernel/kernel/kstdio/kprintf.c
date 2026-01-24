@@ -110,9 +110,26 @@ int print(const char *restrict data, size_t length) {
 	return 1;
 }
 
+int print_with_padding(const char *restrict data, size_t length, size_t padding, int left_justify) {
+	if (!left_justify && length < padding) {
+		for (size_t i = 0; i < padding - length; i++) {
+			tty_putchar(' ');
+		}
+	}
+	if (!print(data, length)) {
+		return -1;
+	}
+	if (left_justify && length < padding) {
+		for (size_t i = 0; i < padding - length; i++) {
+			tty_putchar(' ');
+		}
+	}
+}
+
 /* TODO: this function is UNSAFE since it relies on \0 to determine the end of the string */
 int kprintf_internal(const char *restrict format, va_list parameters) {
 	int written = 0;
+	int ret;
 
 	while (*format != '\0') {
 		size_t maxrem = INT_MAX - written;
@@ -143,14 +160,29 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 		const char *format_begun_at = format++;
 
 		int left_justify = 0;
+		int zero_pad = 0;
 
-		if (*format == '-') {
-			// left justified
+		while (*format == '-' || *format == '0') {
+			if (*format == '-') {
+				left_justify = 1;
+			} else if (*format == '0') {
+				zero_pad = 1;
+			}
 			format++;
-			left_justify = 1;
 		}
 
+		// only do zero pad if not left justify
+		zero_pad = left_justify ^ zero_pad;
+
+		// if (*format == '-') {
+		// 	// left justified
+		// 	format++;
+		// 	left_justify = 1;
+		// }
+
 		size_t padding = atoi(format);
+
+		// TODO: need to get the max number of characters to print
 
 		if (*format == 'c') {
 			format++;
@@ -171,18 +203,8 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!left_justify && len < padding) {
-				for (size_t i = 0; i < padding - len; i++) {
-					tty_putchar(' ');
-				}
-			}
-			if (!print(str, len)) {
-				return -1;
-			}
-			if (left_justify && len < padding) {
-				for (size_t i = 0; i < padding - len; i++) {
-					tty_putchar(' ');
-				}
+			if ((ret = print_with_padding(str, len, padding, left_justify)) < 0) {
+				return ret;
 			}
 			written += len;
 		} else if (*format == 'd') {
@@ -194,11 +216,25 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(str, len)) {
-				return -1;
+			if ((ret = print_with_padding(str, len, padding, left_justify)) < 0) {
+				return ret;
 			}
 			written += len;
-		} else {
+		} else if (*format == 'x') {
+			format++;
+			char buf[8];
+			const char *str = itoa(va_arg(parameters, int), buf, 16);
+			size_t len = strlen(str);
+			if (maxrem < len) {
+				// TODO: Set errno to EOVERFLOW.
+				return -1;
+			}
+			if ((ret = print_with_padding(str, len, padding, left_justify)) < 0) {
+				return ret;
+			}
+			written += len;
+		}
+		else {
 			format = format_begun_at;
 			size_t len = strlen(format);
 			if (maxrem < len) {
