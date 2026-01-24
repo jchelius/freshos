@@ -7,37 +7,89 @@
 #include <kernel/strutil.h>
 #include <kernel/vga.h>
 
-static char *itoa(int value, char *str, int base) {
-    char *rc;
-    char *ptr;
-    char *low;
-    // Check for supported base.
+static enum LENGTH_MOD {
+	LENGTH_MOD_HH,
+	LENGTH_MOD_H,
+	LENGTH_MOD_NONE,
+	LENGTH_MOD_L,
+	LENGTH_MOD_LL,
+	LENGTH_MOD_J,
+	LENGTH_MOD_Z,
+	LENGTH_MOD_T,
+	LENGTH_MOD_L_CAP,
+};
+
+// static char *itoa(int value, char *str, int base) {
+//     char *rc;
+//     char *ptr;
+//     char *low;
+//     // Check for supported base.
+//     if (base < 2 || base > 36) {
+//         *str = '\0';
+//         return str;
+//     }
+//     rc = ptr = str;
+//     // Set '-' for negative decimals.
+//     if (value < 0 && base == 10) {
+//         *ptr++ = '-';
+//     }
+//     // Remember where the numbers start.
+//     low = ptr;
+//     // The actual conversion.
+//     do {
+//         // Modulo is negative for negative value. This trick makes abs() unnecessary.
+//         *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+//         value /= base;
+//     } while (value);
+//     // Terminating the strutil.
+//     *ptr-- = '\0';
+//     // Invert the numbers.
+//     while (low < ptr) {
+//         char tmp = *low;
+//         *low++ = *ptr;
+//         *ptr-- = tmp;
+//     }
+//     return rc;
+// }
+
+// Convert unsigned integer to string (base 2..36)
+char *utoa(uintmax_t value, char *str, int base, int uppercase) {
     if (base < 2 || base > 36) {
         *str = '\0';
         return str;
     }
-    rc = ptr = str;
-    // Set '-' for negative decimals.
-    if (value < 0 && base == 10) {
-        *ptr++ = '-';
+
+    char *ptr = str;
+    char *low = ptr;
+
+    // Conversion table
+    const char *digits = uppercase
+        ? "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        : "0123456789abcdefghijklmnopqrstuvwxyz";
+
+    // Special case: 0
+    if (value == 0) {
+        *ptr++ = '0';
+        *ptr = '\0';
+        return str;
     }
-    // Remember where the numbers start.
-    low = ptr;
-    // The actual conversion.
-    do {
-        // Modulo is negative for negative value. This trick makes abs() unnecessary.
-        *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
+
+    // Convert digits in reverse
+    while (value) {
+        *ptr++ = digits[value % base];
         value /= base;
-    } while (value);
-    // Terminating the strutil.
+    }
+
     *ptr-- = '\0';
-    // Invert the numbers.
+
+    // Reverse the string
     while (low < ptr) {
         char tmp = *low;
         *low++ = *ptr;
         *ptr-- = tmp;
     }
-    return rc;
+
+    return str;
 }
 
 static inline int is_whitespace(char ch) {
@@ -54,29 +106,36 @@ static inline int is_digit(char ch) {
 }
 
 static int atoi(const char *str) {
-	int res = 0;
-	while (is_whitespace(*str)) {
-		str++;
-	}
-	const char *start = str;
-	size_t len = 0;
-	while (is_digit(*(str++))) {
-		len++;
-	}
+    int res = 0;
+    int mul = 1;
 
-	if (len > 12) {
-		return -1;
-	}
+    // Skip leading whitespace
+    while (is_whitespace(*str)) {
+        str++;
+    }
 
-	while (len--) {
-		int dig = *(start++) - '0';
-		for (size_t i = 0; i < len; i++) {
-			dig *= 10;
-		}
-		res += dig;
-	}
+    // Handle optional sign
+    if (*str == '-') {
+        mul = -1;
+        str++;
+    } else if (*str == '+') {
+        str++;
+    }
 
-	return res;
+    // Convert digits
+    while (is_digit(*str)) {
+        int digit = *str - '0';
+
+        // Simple overflow check for 32-bit int
+        if (res > (INT_MAX - digit) / 10) {
+            return (mul == 1) ? INT_MAX : INT_MIN;
+        }
+
+        res = res * 10 + digit;
+        str++;
+    }
+
+    return res * mul;
 }
 
 static int handle_special_ch(char c) {
@@ -107,23 +166,149 @@ int print(const char *restrict data, size_t length) {
 			i++;
 		}
 	}
-	return 1;
+	return 0;
 }
 
-int print_with_padding(const char *restrict data, size_t length, size_t padding, int left_justify) {
-	if (!left_justify && length < padding) {
-		for (size_t i = 0; i < padding - length; i++) {
-			tty_putchar(' ');
-		}
-	}
-	if (!print(data, length)) {
-		return -1;
-	}
-	if (left_justify && length < padding) {
-		for (size_t i = 0; i < padding - length; i++) {
-			tty_putchar(' ');
-		}
-	}
+static int emit_string(
+    const char *str,
+    int min_width,
+    int precision,
+    int left_justify,
+    int maxrem
+) {
+    if (!str) {
+        str = "(null)";
+    }
+
+    size_t len = strlen(str);
+    if (precision >= 0 && (size_t)precision < len) {
+        len = precision;  // truncate to precision
+    }
+
+    if (maxrem < len || maxrem < min_width) {
+        return -1; // overflow
+    }
+
+    char pad_char = ' ';
+
+    // Right-justify padding
+    if (!left_justify && (size_t)min_width > len) {
+        for (size_t i = 0; i < min_width - len; i++) {
+            tty_putchar(pad_char);
+        }
+    }
+
+    // Print the string
+    if (print(str, len) < 0) {
+        return -1;
+    }
+
+    // Left-justify padding
+    if (left_justify && (size_t)min_width > len) {
+        for (size_t i = 0; i < min_width - len; i++) {
+            tty_putchar(' ');
+        }
+    }
+
+    return (len < (size_t)min_width) ? min_width : len;
+}
+
+static int emit_integer(
+    uintmax_t uval,
+    int is_neg,
+    int base,
+    int min_width,
+    int precision,
+    int left_justify,
+    int zero_pad,
+    int uppercase,
+    int maxrem
+) {
+    char buf[32];
+    size_t digit_len = 0;
+
+    // Special case: precision=0 and value=0 -> print nothing
+    if (precision == 0 && uval == 0) {
+        buf[0] = '\0';
+        digit_len = 0;
+    } else {
+        utoa(uval, buf, base, uppercase);
+        digit_len = strlen(buf);
+    }
+
+    // // Apply uppercase for hex
+    // if (uppercase) {
+    //     for (size_t i = 0; i < digit_len; i++) {
+    //         if (buf[i] >= 'a' && buf[i] <= 'f') {
+    //             buf[i] -= 32;
+    //         }
+    //     }
+    // }
+
+    // Precision zeros
+    size_t num_zeros = 0;
+    if (precision > (int)digit_len) {
+        num_zeros = precision - digit_len;
+    }
+
+    // Total length including sign
+    size_t core_len = digit_len + num_zeros + (is_neg ? 1 : 0);
+
+    // If precision is specified, zero_pad is ignored
+    if (precision >= 0) {
+        zero_pad = 0;
+    }
+
+    // Width padding
+    size_t num_spaces = 0;
+    if (min_width > (int)core_len) {
+        num_spaces = min_width - core_len;
+    }
+
+    if (core_len + num_spaces > (size_t)maxrem) {
+        return -1;
+    }
+
+    char pad_char = zero_pad ? '0' : ' ';
+
+    // ---- Emit ----
+    // 1. Leading spaces (if right-justified and zero_pad is off)
+    if (!left_justify && !zero_pad) {
+        for (size_t i = 0; i < num_spaces; i++) {
+            tty_putchar(' ');
+        }
+    }
+
+    // 2. Sign
+    if (is_neg) {
+        tty_putchar('-');
+    }
+
+    // 3. Zero padding from width (only if zero_pad is on)
+    if (!left_justify && zero_pad) {
+        for (size_t i = 0; i < num_spaces; i++) {
+            tty_putchar('0');
+        }
+    }
+
+    // 4. Precision zeros
+    for (size_t i = 0; i < num_zeros; i++) {
+        tty_putchar('0');
+    }
+
+    // 5. Digits
+    if (digit_len > 0) {
+        tty_write(buf, digit_len);
+    }
+
+    // 6. Trailing spaces (left-justify)
+    if (left_justify) {
+        for (size_t i = 0; i < num_spaces; i++) {
+            tty_putchar(' ');
+        }
+    }
+
+    return core_len + num_spaces;
 }
 
 /* TODO: this function is UNSAFE since it relies on \0 to determine the end of the string */
@@ -146,7 +331,7 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(format, amount)) {
+			if (print(format, amount) < 0) {
 				return -1;
 			}
 			format += amount;
@@ -161,6 +346,8 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 
 		int left_justify = 0;
 		int zero_pad = 0;
+		int precision = -1;
+		enum LENGTH_MOD length_mod = LENGTH_MOD_NONE;
 
 		while (*format == '-' || *format == '0') {
 			if (*format == '-') {
@@ -172,7 +359,16 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 		}
 
 		// only do zero pad if not left justify
-		zero_pad = left_justify ^ zero_pad;
+		// zero_pad = left_justify ^ zero_pad;
+
+		if (precision >= 0) {
+			zero_pad = 0;
+		}
+		if (left_justify) {
+			zero_pad = 0;
+		}
+
+		char pad_char = zero_pad ? '0' : ' ';
 
 		// if (*format == '-') {
 		// 	// left justified
@@ -180,76 +376,197 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 		// 	left_justify = 1;
 		// }
 
-		size_t padding = atoi(format);
+		size_t min_field_width = atoi(format);
+
+		while (is_digit(*format)) {
+			format++;
+		}
+
+		if (*format == '.') {
+			format++;
+			precision = is_digit(*format) ? atoi(format) : 0;
+			while (is_digit(*format)){
+				format++;
+			}
+		}
+
+		if (*format == 'h') {
+			if (*(++format) == 'h') {
+				length_mod = LENGTH_MOD_HH;
+				format++;
+			} else {
+				length_mod = LENGTH_MOD_H;
+			}
+		} else if (*format == 'l') {
+			if (*(++format) == 'l') {
+				length_mod = LENGTH_MOD_LL;
+				format++;
+			} else {
+				length_mod = LENGTH_MOD_L;
+			}
+		} else if (*format == 'j') {
+			length_mod = LENGTH_MOD_J;
+			format++;
+		} else if (*format == 'z') {
+			length_mod = LENGTH_MOD_Z;
+			format++;
+		} else if (*format == 't') {
+			length_mod = LENGTH_MOD_T;
+			format++;
+		} else if (*format == 'L') {
+			length_mod = LENGTH_MOD_L_CAP;
+			format++;
+		}
 
 		// TODO: need to get the max number of characters to print
 
-		if (*format == 'c') {
-			format++;
-			char c = (unsigned char) va_arg(parameters, int /* char promotes to int */);
-			if (!maxrem) {
-				// TODO: Set errno to EOVERFLOW.
-				return -1;
+		switch (*format) {
+			case 'c': {
+				format++;
+				char c = (unsigned char) va_arg(parameters, int /* char promotes to int */);
+				if (!maxrem) {
+					// TODO: Set errno to EOVERFLOW.
+					return -1;
+				}
+				if (!handle_special_ch(c)) {
+					tty_putchar(c);
+				}
+				written++;
+				break;
 			}
-			if (!handle_special_ch(c)) {
-				tty_putchar(c);
+			case 'd' : {
+				format++;
+				if (precision < 0) {
+					precision = 1;
+				}
+				char buf[21];
+				// char buf[12];
+				intmax_t val;
+				uintmax_t uval;
+				int is_neg = 0;
+				switch (length_mod) {
+					case LENGTH_MOD_HH:
+						val = (char) va_arg(parameters, int);
+						break;
+					case LENGTH_MOD_H:
+						val = (short) va_arg(parameters, int);
+						break;
+					case LENGTH_MOD_L:
+						val = va_arg(parameters, long);
+						break;
+					case LENGTH_MOD_LL:
+						val = va_arg(parameters, long long);
+						break;
+					case LENGTH_MOD_J:
+						val = va_arg(parameters, intmax_t);
+						break;
+					case LENGTH_MOD_Z:
+						val = va_arg(parameters, ssize_t);
+						break;
+					case LENGTH_MOD_T:
+						val = va_arg(parameters, ptrdiff_t);
+						break;
+					default:
+						val = va_arg(parameters, int);
+				}
+				
+				if (val < 0) {
+					is_neg = 1;
+					uval = (uintmax_t)(-(val + 1)) + 1;  // INT_MIN safe
+				} else {
+					uval = (uintmax_t)val;
+				}
+
+				if ((ret = emit_integer(
+					uval,
+					is_neg,
+					10,
+					min_field_width,
+					precision,
+					left_justify,
+					zero_pad,
+					0,
+					maxrem
+				)) < 0) {
+					// TODO: Set errno to EOVERFLOW.
+					return -1;
+				}
+				written += ret;
+				break;
 			}
-			written++;
-		} else if (*format == 's') {
-			format++;
-			const char* str = va_arg(parameters, const char*);
-			size_t len = strlen(str);
-			if (maxrem < len) {
-				// TODO: Set errno to EOVERFLOW.
-				return -1;
+			case 'x':
+			case 'X':
+			case 'u': {
+				char conv = *format++;
+				int uppercase = (conv == 'X');
+				int base = (conv == 'u') ? 10 : 16;
+				char buf[21];
+				// char buf[8];
+				uintmax_t uval;
+				switch (length_mod) {
+					case LENGTH_MOD_HH:
+						uval = (unsigned char) va_arg(parameters, int);
+						break;
+					case LENGTH_MOD_H:
+						uval = (unsigned short) va_arg(parameters, int);
+						break;
+					case LENGTH_MOD_L:
+						uval = va_arg(parameters, unsigned long);
+						break;
+					case LENGTH_MOD_LL:
+						uval = va_arg(parameters, unsigned long long);
+						break;
+					case LENGTH_MOD_J:
+						uval = va_arg(parameters, uintmax_t);
+						break;
+					case LENGTH_MOD_Z:
+						uval = va_arg(parameters, size_t);
+						break;
+					case LENGTH_MOD_T:
+						uval = va_arg(parameters, uintptr_t);
+						break;
+					default:
+						uval = (unsigned int) va_arg(parameters, int);
+				}
+				
+				if ((ret = emit_integer(
+					uval,
+					0,
+					base,
+					min_field_width,
+					precision,
+					left_justify,
+					zero_pad,
+					uppercase,
+					maxrem
+				)) < 0) {
+					// TODO: Set errno to EOVERFLOW.
+					return -1;
+				}
+				written += ret;
+				break;
 			}
-			if ((ret = print_with_padding(str, len, padding, left_justify)) < 0) {
-				return ret;
+			case 's':
+			default: {
+				format++;
+				const char* str = va_arg(parameters, const char*);
+				if ((ret = emit_string(
+					str,
+					min_field_width,
+					precision,
+					left_justify,
+					zero_pad,
+					maxrem
+				)) < 0) {
+					// TODO: Set errno to EOVERFLOW.
+					return -1;
+				}
+				written += ret;
 			}
-			written += len;
-		} else if (*format == 'd') {
-			format++;
-			char buf[12];
-			const char *str = itoa(va_arg(parameters, int), buf, 10);
-			size_t len = strlen(str);
-			if (maxrem < len) {
-				// TODO: Set errno to EOVERFLOW.
-				return -1;
-			}
-			if ((ret = print_with_padding(str, len, padding, left_justify)) < 0) {
-				return ret;
-			}
-			written += len;
-		} else if (*format == 'x') {
-			format++;
-			char buf[8];
-			const char *str = itoa(va_arg(parameters, int), buf, 16);
-			size_t len = strlen(str);
-			if (maxrem < len) {
-				// TODO: Set errno to EOVERFLOW.
-				return -1;
-			}
-			if ((ret = print_with_padding(str, len, padding, left_justify)) < 0) {
-				return ret;
-			}
-			written += len;
-		}
-		else {
-			format = format_begun_at;
-			size_t len = strlen(format);
-			if (maxrem < len) {
-				// TODO: Set errno to EOVERFLOW.
-				return -1;
-			}
-			if (!print(format, len)) {
-				return -1;
-			}
-			written += len;
-			format += len;
+
 		}
 	}
 
-	va_end(parameters);
 	if (written > 0) {
 		tty_move_cursor();
 	}
