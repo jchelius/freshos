@@ -19,39 +19,6 @@ static enum LENGTH_MOD {
 	LENGTH_MOD_L_CAP,
 };
 
-// static char *itoa(int value, char *str, int base) {
-//     char *rc;
-//     char *ptr;
-//     char *low;
-//     // Check for supported base.
-//     if (base < 2 || base > 36) {
-//         *str = '\0';
-//         return str;
-//     }
-//     rc = ptr = str;
-//     // Set '-' for negative decimals.
-//     if (value < 0 && base == 10) {
-//         *ptr++ = '-';
-//     }
-//     // Remember where the numbers start.
-//     low = ptr;
-//     // The actual conversion.
-//     do {
-//         // Modulo is negative for negative value. This trick makes abs() unnecessary.
-//         *ptr++ = "zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"[35 + value % base];
-//         value /= base;
-//     } while (value);
-//     // Terminating the strutil.
-//     *ptr-- = '\0';
-//     // Invert the numbers.
-//     while (low < ptr) {
-//         char tmp = *low;
-//         *low++ = *ptr;
-//         *ptr-- = tmp;
-//     }
-//     return rc;
-// }
-
 // Convert unsigned integer to string (base 2..36)
 char *utoa(uintmax_t value, char *str, int base, int uppercase) {
     if (base < 2 || base > 36) {
@@ -236,15 +203,6 @@ static int emit_integer(
         digit_len = strlen(buf);
     }
 
-    // // Apply uppercase for hex
-    // if (uppercase) {
-    //     for (size_t i = 0; i < digit_len; i++) {
-    //         if (buf[i] >= 'a' && buf[i] <= 'f') {
-    //             buf[i] -= 32;
-    //         }
-    //     }
-    // }
-
     // Precision zeros
     size_t num_zeros = 0;
     if (precision > (int)digit_len) {
@@ -358,9 +316,6 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 			format++;
 		}
 
-		// only do zero pad if not left justify
-		// zero_pad = left_justify ^ zero_pad;
-
 		if (precision >= 0) {
 			zero_pad = 0;
 		}
@@ -369,12 +324,6 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 		}
 
 		char pad_char = zero_pad ? '0' : ' ';
-
-		// if (*format == '-') {
-		// 	// left justified
-		// 	format++;
-		// 	left_justify = 1;
-		// }
 
 		size_t min_field_width = atoi(format);
 
