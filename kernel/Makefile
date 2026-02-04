@@ -32,6 +32,7 @@ LIBS:=$(LIBS) $(KERNEL_ARCH_LIBS)
 KERNEL_OBJS=\
 kernel/kernel.o \
 kernel/kstdio/kprintf.o \
+kernel/kprintf_test.o \
 kernel/kstdio/kerror.o \
 kernel/kstdio/kputs.o \
 kernel/strutil/memcmp.o \

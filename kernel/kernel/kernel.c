@@ -6,6 +6,8 @@
 
 // volatile int d = 0;
 
+extern void kprintf_test_all(void);
+
 void kernel_main(uint32_t mb_magic, uint32_t mb_addr) {
 	if (mb_magic != MULTIBOOT_BOOTLOADER_MAGIC) {
 		kerror("No Multiboot Magic found.\n");
@@ -13,6 +15,13 @@ void kernel_main(uint32_t mb_magic, uint32_t mb_addr) {
 	}
 	
 	tty_initialize();
+
+	kprintf_test_all();
+
+	while (1) {
+		__asm__ volatile("hlt");
+	}
+
 	kprintf("Hello, kernel World!\n");
 
 	kprintf("sizeof(multiboot_info)=%d\n", sizeof(struct multiboot_info));

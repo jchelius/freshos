@@ -1,13 +1,15 @@
 #include <kernel/kstdio.h>
 
-#include <limits.h>
 #include <stdarg.h>
 
 #include <kernel/tty.h>
 #include <kernel/strutil.h>
 #include <kernel/vga.h>
 
-static enum LENGTH_MOD {
+#define INT_MAX 0x7fffffff
+#define INT_MIN (-INT_MAX - 1)
+
+enum LENGTH_MOD {
 	LENGTH_MOD_HH,
 	LENGTH_MOD_H,
 	LENGTH_MOD_NONE,
@@ -113,7 +115,7 @@ static int handle_special_ch(char c) {
 		tty_carriagereturn();
 		return 1;
 	}
-	return -1;
+	return 0;
 }
 
 int print(const char *restrict data, size_t length) {
@@ -138,17 +140,17 @@ int print(const char *restrict data, size_t length) {
 
 static int emit_string(
     const char *str,
-    int min_width,
+    size_t min_width,
     int precision,
     int left_justify,
-    int maxrem
+    size_t maxrem
 ) {
     if (!str) {
         str = "(null)";
     }
 
     size_t len = strlen(str);
-    if (precision >= 0 && (size_t)precision < len) {
+    if (precision >= 0 && precision < (int) len) {
         len = precision;  // truncate to precision
     }
 
@@ -156,12 +158,10 @@ static int emit_string(
         return -1; // overflow
     }
 
-    char pad_char = ' ';
-
     // Right-justify padding
-    if (!left_justify && (size_t)min_width > len) {
+    if (!left_justify && min_width > len) {
         for (size_t i = 0; i < min_width - len; i++) {
-            tty_putchar(pad_char);
+            tty_putchar(' ');
         }
     }
 
@@ -171,25 +171,25 @@ static int emit_string(
     }
 
     // Left-justify padding
-    if (left_justify && (size_t)min_width > len) {
+    if (left_justify && min_width > len) {
         for (size_t i = 0; i < min_width - len; i++) {
             tty_putchar(' ');
         }
     }
 
-    return (len < (size_t)min_width) ? min_width : len;
+    return (len < min_width) ? min_width : len;
 }
 
 static int emit_integer(
     uintmax_t uval,
     int is_neg,
     int base,
-    int min_width,
+    size_t min_width,
     int precision,
     int left_justify,
     int zero_pad,
     int uppercase,
-    int maxrem
+    size_t maxrem
 ) {
     char buf[32];
     size_t digit_len = 0;
@@ -205,7 +205,7 @@ static int emit_integer(
 
     // Precision zeros
     size_t num_zeros = 0;
-    if (precision > (int)digit_len) {
+    if (precision > (int) digit_len) {
         num_zeros = precision - digit_len;
     }
 
@@ -219,15 +219,13 @@ static int emit_integer(
 
     // Width padding
     size_t num_spaces = 0;
-    if (min_width > (int)core_len) {
+    if (min_width > core_len) {
         num_spaces = min_width - core_len;
     }
 
-    if (core_len + num_spaces > (size_t)maxrem) {
+    if (core_len + num_spaces > maxrem) {
         return -1;
     }
-
-    char pad_char = zero_pad ? '0' : ' ';
 
     // ---- Emit ----
     // 1. Leading spaces (if right-justified and zero_pad is off)
@@ -300,7 +298,7 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 		// At this point, format[0] == '%' AND format[1] != '%'
 		// It's possible that format[1] == '\0'
 
-		const char *format_begun_at = format++;
+		format++;
 
 		int left_justify = 0;
 		int zero_pad = 0;
@@ -316,15 +314,6 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 			format++;
 		}
 
-		if (precision >= 0) {
-			zero_pad = 0;
-		}
-		if (left_justify) {
-			zero_pad = 0;
-		}
-
-		char pad_char = zero_pad ? '0' : ' ';
-
 		size_t min_field_width = atoi(format);
 
 		while (is_digit(*format)) {
@@ -337,6 +326,13 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 			while (is_digit(*format)){
 				format++;
 			}
+		}
+
+		if (precision >= 0) {
+			zero_pad = 0;
+		}
+		if (left_justify) {
+			zero_pad = 0;
 		}
 
 		if (*format == 'h') {
@@ -388,7 +384,6 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 				if (precision < 0) {
 					precision = 1;
 				}
-				char buf[21];
 				// char buf[12];
 				intmax_t val;
 				uintmax_t uval;
@@ -410,7 +405,7 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 						val = va_arg(parameters, intmax_t);
 						break;
 					case LENGTH_MOD_Z:
-						val = va_arg(parameters, ssize_t);
+						val = va_arg(parameters, ptrdiff_t);
 						break;
 					case LENGTH_MOD_T:
 						val = va_arg(parameters, ptrdiff_t);
@@ -449,8 +444,6 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 				char conv = *format++;
 				int uppercase = (conv == 'X');
 				int base = (conv == 'u') ? 10 : 16;
-				char buf[21];
-				// char buf[8];
 				uintmax_t uval;
 				switch (length_mod) {
 					case LENGTH_MOD_HH:
@@ -504,7 +497,6 @@ int kprintf_internal(const char *restrict format, va_list parameters) {
 					min_field_width,
 					precision,
 					left_justify,
-					zero_pad,
 					maxrem
 				)) < 0) {
 					// TODO: Set errno to EOVERFLOW.
