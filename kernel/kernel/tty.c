@@ -70,7 +70,7 @@ void tty_nextline() {
 }
 
 void tty_carriagereturn() {
-	tty_pos = tty_pos / VGA_WIDTH;
+	tty_pos = VGA_WIDTH * (tty_pos / VGA_WIDTH);
 }
 
 void tty_putchar(char c) {

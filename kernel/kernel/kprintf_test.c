@@ -11,15 +11,15 @@ void kprintf_test_all(void) {
     kprintf("==============================\n\n");
 
     /* 1. Basic literals & percent */
-    // kprintf("[1] Basic literals & %%\n");
-    // kprintf("Hello, kernel world!\n");
-    // kprintf("100%% sure this works\n\n");
+    kprintf("[1] Basic literals & %%\n");
+    kprintf("Hello, kernel world!\n");
+    kprintf("100%% sure this works\n\n");
 
     /* 2. Character output & control chars */
-    // kprintf("[2] Character output\n");
-    // kprintf("Chars: %c %c %c\n", 'A', 'b', '0');
-    // kprintf("Newline test%cLine2\n", '\n');
-    // kprintf("Carriage return test\rXXX\n\n");
+    kprintf("[2] Character output\n");
+    kprintf("Chars: %c %c %c\n", 'A', 'b', '0');
+    kprintf("Newline test%cLine2\n", '\n');
+    kprintf("Carriage return test\rXXX\n\n");
 
     /* 3. Signed decimal integers */
     // kprintf("[3] Signed integers\n");
@@ -63,29 +63,40 @@ void kprintf_test_all(void) {
     // kprintf("[9] Integer precision\n");
     // kprintf("Prec: '%.5d'\n", 42);
     // kprintf("Width+prec: '%8.5d'\n", 42);
+    // // kprintf("Width+prec: '   000%d'\n", 42);
     // kprintf("Zero precision zero: '%.0d'\n\n", 0);
 
     /* 10. String precision */
-    kprintf("[10] String precision\n");
-    kprintf("Str prec: '%.3s'\n", "abcdef");
-    kprintf("Str width+prec: '%8.3s'\n\n", "abcdef");
+    // kprintf("[10] String precision\n");
+    // kprintf("Str prec: '%.3s'\n", "abcdef");
+    // kprintf("Str width+prec: '%8.3s'\n\n", "abcdef");
+    // // kprintf("Str width+prec: '%8.3s'\n", "abcdef");
+    // // kprintf("Str width+prec: '     %s'\n\n", "abc");
 
-    /* 11. NULL string handling */
-    kprintf("[11] NULL string handling\n");
-    kprintf("Null string: '%s'\n", (char *)0);
-    kprintf("Null prec: '%.3s'\n\n", (char *)0);
+    // /* 11. NULL string handling */
+    // kprintf("[11] NULL string handling\n");
+    // kprintf("Null string: '%s'\n", (char *)0);
+    // kprintf("Null prec: '%.3s'\n\n", (char *)0);
 
-    /* 12. Mixed-format stress test */
-    kprintf("[12] Mixed-format stress test\n");
-    kprintf(
-        "Mix: c=%c d=%-6d u=%05u x=%08X s='%.4s'\n\n",
-        'Z', -12, 34u, 0xBEEF, "kernel"
-    );
+    // /* 12. Mixed-format stress test */
+    // kprintf("[12] Mixed-format stress test\n");
+    // kprintf(
+    //     "Mix: c=%c d=%-6d u=%05u x=%08X s='%.4s'\n\n",
+    //     'Z', -12, 34u, 0xBEEF, "kernel"
+    // );
+    // // kprintf(
+    // //     "Mix: c=%c d=%-6d u=%05u x=%08X s='%.4s'\n",
+    // //     'Z', -12, 34u, 0xBEEF, "kernel"
+    // // );
+    // // kprintf(
+    // //     "Mix: c=%c d=-12    u=00034 x=0000BEEF s='kern'\n\n",
+    // //     'Z', -12, 34u, 0xBEEF, "kernel"
+    // // );
 
-    /* 13. Return value check */
-    kprintf("[13] Return value check\n");
-    int n = kprintf("Count me: %d %s\n", 123, "abc");
-    kprintf("Written = %d\n\n", n);
+    // /* 13. Return value check */
+    // kprintf("[13] Return value check\n");
+    // int n = kprintf("Count me: %d %s\n", 123, "abc");
+    // kprintf("Written = %d\n\n", n);
 
     kprintf("========== END OF TEST ==========\n\n");
 }
