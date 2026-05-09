@@ -3,6 +3,8 @@
 
 #define MULTIBOOT_BOOTLOADER_MAGIC 0x2BADB002
 
+#define MULTIBOOT_MMAP_DEFINED_BIT 4
+
 // No packing required: Multiboot layout matches natural C alignment
 struct multiboot_info {
 	/* flags */
